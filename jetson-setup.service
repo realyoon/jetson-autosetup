@@ -1,0 +1,19 @@
+[Unit]
+Description=Jetson Nano 최초 부팅 자동 셋업
+After=network-online.target multi-user.target
+Wants=network-online.target
+ConditionPathExists=!/var/lib/jetson_setup.done
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/jetson_setup.sh
+User=root
+# 설치가 오래 걸려도 중단되지 않도록 (0 = 무제한)
+TimeoutStartSec=0
+RemainAfterExit=no
+# 로그를 저널에도 남김
+StandardOutput=journal+console
+StandardError=journal+console
+
+[Install]
+WantedBy=multi-user.target

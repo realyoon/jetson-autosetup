@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Jetson 자동 셋업 진행상황
+Comment=셋업 로그를 실시간으로 보여주는 터미널을 엽니다
+Exec=/usr/local/bin/jetson_setup_watch.sh
+Terminal=false
+X-GNOME-Autostart-enabled=true
+NoDisplay=false
