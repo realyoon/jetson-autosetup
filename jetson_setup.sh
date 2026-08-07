@@ -96,13 +96,24 @@ export DEBIAN_FRONTEND=noninteractive
 apt-get update -y
 apt-get install -y --no-install-recommends \
     git curl wget \
-    python3-pip python3-matplotlib python3-opencv python3-dev \
+    python3-pip python3-setuptools python3-wheel \
+    python3-matplotlib python3-opencv python3-dev \
     libopenblas-base libopenmpi-dev \
     libjpeg-dev zlib1g-dev libpython3-dev \
     libavcodec-dev libavformat-dev libswscale-dev \
     && ok "apt 패키지 설치 완료" || warn "일부 apt 패키지 설치 실패"
 
+# setuptools 는 torchvision/jtop 의 소스 빌드에 반드시 필요
+pip3 install --no-cache-dir -U setuptools wheel \
+    && ok "setuptools, wheel 준비 완료" || warn "setuptools 설치 실패"
 pip3 install --no-cache-dir Cython numpy && ok "Cython, numpy 설치 완료" || warn "pip 설치 실패"
+
+# setuptools 가 정말 import 되는지 확인 (안 되면 이후 빌드가 전부 실패함)
+if python3 -c "import setuptools" 2>/dev/null; then
+    ok "setuptools 확인됨"
+else
+    warn "setuptools 를 불러올 수 없음 - torchvision/jtop 설치가 실패할 수 있음"
+fi
 
 ###############################################################################
 step "5/9" "PyTorch 1.10.0 설치"
