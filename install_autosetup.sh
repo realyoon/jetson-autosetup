@@ -22,6 +22,36 @@ fi
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
 
+# ---------------------------------------------------------------------------
+# 필요한 파일이 모두 같은 폴더에 있는지 먼저 확인
+# ---------------------------------------------------------------------------
+MISSING=0
+for f in jetson_setup.sh jetson_setup_watch.sh \
+         jetson-setup.service jetson-setup-watch.desktop; do
+    if [ ! -f "$DIR/$f" ]; then
+        echo "  [없음] $f"
+        MISSING=1
+    fi
+done
+
+if [ "$MISSING" = "1" ]; then
+    echo ""
+    echo "============================================================"
+    echo " 필요한 파일이 빠져 있습니다."
+    echo ""
+    echo " 아래 5개 파일이 모두 같은 폴더에 있어야 합니다:"
+    echo "   install_autosetup.sh   (지금 실행한 파일)"
+    echo "   jetson_setup.sh"
+    echo "   jetson_setup_watch.sh"
+    echo "   jetson-setup.service"
+    echo "   jetson-setup-watch.desktop"
+    echo ""
+    echo " 현재 폴더: $DIR"
+    echo " 파일을 다시 내려받은 뒤 실행하세요."
+    echo "============================================================"
+    exit 1
+fi
+
 echo "[1/5] 셋업 스크립트 복사..."
 install -m 755 "$DIR/jetson_setup.sh"       /usr/local/bin/jetson_setup.sh
 install -m 755 "$DIR/jetson_setup_watch.sh" /usr/local/bin/jetson_setup_watch.sh

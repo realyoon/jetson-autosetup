@@ -62,12 +62,18 @@ done
 step "2/9" "SWAP 메모리 ${SWAP_SIZE} 설정"
 ###############################################################################
 if [ ! -f /swapfile ]; then
-    fallocate -l "$SWAP_SIZE" /swapfile   && \
-    chmod 600 /swapfile                   && \
-    mkswap /swapfile >/dev/null           && \
-    swapon /swapfile                      && ok "스왑 활성화 완료" || warn "스왑 설정 실패"
-    grep -q '^/swapfile' /etc/fstab || echo '/swapfile none swap sw 0 0' >> /etc/fstab
-    ok "/etc/fstab 등록 완료 (재부팅 후에도 유지)"
+    if fallocate -l "$SWAP_SIZE" /swapfile && \
+       chmod 600 /swapfile                 && \
+       mkswap /swapfile >/dev/null         && \
+       swapon /swapfile; then
+        ok "스왑 활성화 완료"
+        # 스왑 생성에 성공했을 때만 fstab 에 등록 (실패 시 등록하면 부팅 경고 발생)
+        grep -q '^/swapfile' /etc/fstab || echo '/swapfile none swap sw 0 0' >> /etc/fstab
+        ok "/etc/fstab 등록 완료 (재부팅 후에도 유지)"
+    else
+        warn "스왑 설정 실패 - fstab 에는 등록하지 않음"
+        rm -f /swapfile
+    fi
 else
     ok "/swapfile 이 이미 존재함 - 건너뜀"
 fi
@@ -125,9 +131,11 @@ if [ "$INSTALL_TORCHVISION" = "1" ]; then
         cd /tmp && rm -rf torchvision
         if git clone --depth 1 --branch v0.11.1 \
              https://github.com/pytorch/vision torchvision; then
-            cd torchvision
-            export BUILD_VERSION=0.11.1
-            python3 setup.py install && ok "torchvision 설치 완료" || warn "torchvision 빌드 실패"
+            if ( cd torchvision && export BUILD_VERSION=0.11.1 && python3 setup.py install ); then
+                ok "torchvision 설치 완료"
+            else
+                warn "torchvision 빌드 실패"
+            fi
         else
             warn "torchvision 소스 clone 실패"
         fi
@@ -155,9 +163,11 @@ if [ "$INSTALL_VSCODE" = "1" ]; then
     else
         cd /tmp && rm -rf installVSCode
         if git clone --depth 1 https://github.com/JetsonHacksNano/installVSCode.git; then
-            cd installVSCode
-            chmod +x installVSCode.sh
-            ./installVSCode.sh && ok "VSCode 설치 완료" || warn "VSCode 설치 실패"
+            if ( cd installVSCode && chmod +x installVSCode.sh && ./installVSCode.sh ); then
+                ok "VSCode 설치 완료"
+            else
+                warn "VSCode 설치 실패"
+            fi
         else
             warn "installVSCode 저장소 clone 실패"
         fi
@@ -166,7 +176,7 @@ if [ "$INSTALL_VSCODE" = "1" ]; then
     # --- 확장 설치 (반드시 root가 아닌 실제 사용자 권한으로 실행) ---
     if command -v code >/dev/null 2>&1 && [ -n "$TARGET_USER" ]; then
         for EXT in ms-python.python ms-python.vscode-pylance; do
-            sudo -u "$TARGET_USER" HOME="$USER_HOME" \
+            sudo -u "$TARGET_USER" -H \
                 code --install-extension "$EXT" --force >/dev/null 2>&1 \
                 && ok "확장 설치: $EXT" || warn "확장 설치 실패: $EXT"
         done
@@ -254,9 +264,14 @@ echo "# 전체 로그: $LOG"
 echo "############################################################"
 
 # 완료 플래그 + 서비스 비활성화 (다음 부팅부터 실행 안 함)
-touch "$DONE_FLAG"
-systemctl disable jetson-setup.service >/dev/null 2>&1 || true
-rm -f /etc/xdg/autostart/jetson-setup-watch.desktop 2>/dev/null || true
+if [ "$NET_OK" = "1" ]; then
+    touch "$DONE_FLAG"
+    systemctl disable jetson-setup.service >/dev/null 2>&1 || true
+    rm -f /etc/xdg/autostart/jetson-setup-watch.desktop 2>/dev/null || true
+else
+    # 인터넷이 없어 설치를 못 했으므로 완료 처리하지 않음 -> 다음 부팅에 자동 재시도
+    echo "완료 처리하지 않습니다. 랜선 연결 후 재부팅하면 자동으로 다시 시도합니다."
+fi
 
 if [ "$AUTO_REBOOT" = "1" ]; then
     echo "30초 후 재부팅합니다... (취소하려면 Ctrl+C)"
