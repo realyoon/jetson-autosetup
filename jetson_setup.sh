@@ -108,6 +108,15 @@ pip3 install --no-cache-dir -U setuptools wheel \
     && ok "setuptools, wheel 준비 완료" || warn "setuptools 설치 실패"
 pip3 install --no-cache-dir Cython numpy && ok "Cython, numpy 설치 완료" || warn "pip 설치 실패"
 
+# Pillow: 최신 버전은 Python 3.8+ 문법을 써서 Python 3.6 에서 문법 오류가 남.
+# torchvision 이 자동으로 최신 Pillow 를 받아오는 것을 막기 위해 미리 호환 버전을 설치.
+if python3 -c "import PIL" 2>/dev/null; then
+    ok "Pillow 가 이미 설치되어 있음"
+else
+    pip3 install --no-cache-dir "pillow<9" \
+        && ok "Pillow (Python 3.6 호환 버전) 설치 완료" || warn "Pillow 설치 실패"
+fi
+
 # setuptools 가 정말 import 되는지 확인 (안 되면 이후 빌드가 전부 실패함)
 if python3 -c "import setuptools" 2>/dev/null; then
     ok "setuptools 확인됨"
